@@ -1,0 +1,48 @@
+#
+# Build Consul AMI based on Ubuntu 14.04
+#
+#   ansible-playbook -i /dev/null build-consul-ami.yml
+#
+- hosts: 127.0.0.1
+  connection: local
+  vars:
+    consul_version: 0.5.2
+    consul_url: "{{hashicorp_url_prefix}}/consul/{{consul_version}}/consul_{{consul_version}}_linux_amd64.zip"
+  tasks:
+
+  - include: includes/setup-hashicorp-bindir.yml
+
+  - name: 'run packer binary to get version'
+    shell: "packer --version | sed 's/[^0-9\\.]*//g'"
+    environment:
+      PATH: "{{hashicorp_bindir}}:{{ ansible_env.PATH }}"
+    register: packer_version_command
+
+  - name: 'get latest ebs ubuntu 14.04 AMI'
+    ec2_ami_search:
+      distro: ubuntu
+      release: trusty
+      region: "{{region}}"
+      store: ebs-ssd
+      virt: hvm
+    register: latest_ubuntu
+
+  - name: 'get account alias ami'
+    command: aws iam list-account-aliases --query 'AccountAliases[0]' --out text
+    register: account_alias_command
+
+  - name: 'set pretty facts'
+    set_fact:
+      base_ubuntu_ami: "{{ latest_ubuntu.ami }}"
+      accountalias: "{{ account_alias_command.stdout | default('') }}"
+      packer_version: "{{ packer_version_command.stdout }}"
+
+  - name: 'validate packer'
+    shell: "packer validate -var 'ubuntu_source_ami={{base_ubuntu_ami}}' -var 'packer_version={{packer_version}}' -var 'region={{region}}' -var 'accountalias={{accountalias}}' files/consul.json"
+    environment:
+      PATH: "{{hashicorp_bindir}}:{{ ansible_env.PATH }}"
+
+  - name: 'run packer'
+    shell: "packer build -var 'ubuntu_source_ami={{base_ubuntu_ami}}' -var 'packer_version={{packer_version}}' -var 'region={{region}}' -var 'accountalias={{accountalias}}' files/consul.json -color=false"
+    environment:
+      PATH: "{{hashicorp_bindir}}:{{ ansible_env.PATH }}"

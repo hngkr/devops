@@ -1,0 +1,33 @@
+  - name: 'check if {{product}} binary exists'
+    stat: path="{{ hashicorp_bindir }}/{{product}}"
+    register: product_exists
+
+  - name: 'run {{product}} binary'
+    shell: "{{product}} --version | sed 's/[^0-9\\.]*//g'"
+    environment:
+      PATH: "{{hashicorp_bindir}}:{{ ansible_env.PATH }}"
+    when: product_exists.stat.isreg
+    register: product_version_command
+    failed_when: "product_version_command.rc != 0 and product_version_command.rc != 1"
+
+  - name: 'set version fact'
+    set_fact:
+      installed_product_version: "{{ product_version_command.stdout }}"
+    when: product_exists.stat.isreg and not product_version_command.failed
+
+  - name: 'set version fact if no version found'
+    set_fact:
+      installed_product_version: "none"
+    when: not product_exists.stat.isreg or product_version_command.failed
+
+  - name: 'download {{product}}'
+    get_url: url="{{product_url}}" dest="../bin/{{product}}.zip" mode=0440 validate_certs=False
+    when: installed_product_version != product_version
+
+  - name: 'unpack {{product}} download'
+    unarchive: src=../bin/{{product}}.zip dest=../bin
+    when: installed_product_version != product_version
+
+  - name: 'remove {{product}} download'
+    file: path=../bin/{{product}}.zip state=absent
+    when: installed_product_version != product_version

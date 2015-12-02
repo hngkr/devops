@@ -1,0 +1,49 @@
+{
+  "variables": {
+    "aws_access_key": "",
+    "aws_secret_key": "",
+    "ubuntu_source_ami": "",
+    "packer_version": "",
+    "region": "",
+    "accountalias": ""
+  },
+  "builders": [{
+    "type": "amazon-ebs",
+    "access_key": "{{user `aws_access_key`}}",
+    "secret_key": "{{user `aws_secret_key`}}",
+    "region": "{{user `region`}}",
+    "source_ami": "{{user `ubuntu_source_ami`}}",
+    "instance_type": "t2.micro",
+    "ssh_username": "ubuntu",
+    "ami_name": "consul {{timestamp}}",
+    "ami_description": "consul ami from {{user `ubuntu_source_ami`}} / packer {{user `packer_version`}}",
+    "tags": {
+      "usage": "consul",
+      "customer": "{{user `accountalias`}}"
+    },
+    "run_tags": {
+      "Name": "temporary server for consul ami {{timestamp}}",
+      "usage": "temporary",
+      "customer": "{{user `accountalias`}}"
+    }
+  }],
+  "provisioners": [
+    {
+      "type": "shell",
+      "execute_command": "echo 'vagrant' | {{ .Vars }} sudo -E -S sh '{{ .Path }}'",
+      "inline": [
+        "sleep 30",
+        "/usr/bin/apt-get update",
+        "/usr/bin/apt-get -y install software-properties-common python-software-properties python-dev python-pip python-virtualenv libyaml-dev python-httplib2",
+        "/usr/bin/pip install ansible boto botocore httplib2 pycrypto"
+      ]
+    },
+    {
+      "type": "ansible-local",
+      "playbook_file": "../ansible/checkbot.yml",
+      "role_paths": [
+        "../ansible/roles/*"
+      ]
+    }
+  ]
+}

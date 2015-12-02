@@ -1,0 +1,2 @@
+region: eu-west-1
+hashicorp_url_prefix: "https://releases.hashicorp.com"

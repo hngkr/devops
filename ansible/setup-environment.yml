@@ -1,0 +1,36 @@
+#
+# Download hashicorp sw to local environment:
+#
+#   ansible-playbook -i /dev/null setup-environment.yml
+#
+- hosts: 127.0.0.1
+  connection: local
+  vars:
+    terraform_version: 0.6.7
+    packer_version: 0.8.6
+    # only tested for MacOS X
+    terraform_url: "{{hashicorp_url_prefix}}/terraform/{{terraform_version}}/terraform_{{terraform_version}}_{{ansible_system|lower}}_amd64.zip"
+    packer_url: "{{hashicorp_url_prefix}}/packer/{{packer_version}}/packer_{{packer_version}}_{{ansible_system|lower}}_amd64.zip"
+  tasks:
+
+  - include: includes/setup-hashicorp-bindir.yml
+
+  #
+  # conditionally install terraform and packer
+  #
+
+  - include: includes/install-hashicorp-product.yml
+    vars:
+      product: terraform
+      product_version: "{{ terraform_version }}"
+      product_url: "{{ terraform_url }}"
+
+  - include: includes/install-hashicorp-product.yml
+    vars:
+      product: packer
+      product_version: "{{ packer_version }}"
+      product_url: "{{ packer_url }}"
+
+#  - name: 'Download ec2_ami_find because its not in Ansible 1.9'
+#    get_url: url="https://raw.githubusercontent.com/ansible/ansible-modules-core/stable-2.0/cloud/amazon/ec2_ami_find.py" dest=library/ec2_ami_find mode=0440 validate_certs=False
+

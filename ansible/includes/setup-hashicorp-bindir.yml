@@ -1,0 +1,7 @@
+  - name: 'get parent directory'
+    shell: dirname $(pwd)
+    register: full_parent_directory
+
+  - name: 'set pretty facts'
+    set_fact:
+      hashicorp_bindir: "{{ full_parent_directory.stdout }}/bin"
